@@ -8,7 +8,7 @@ export const LogoutButton = () => {
     try {
 
       const refreshToken = localStorage.getItem('refresh_token')
-      console.log("refresh : ",refreshToken);
+    
       
       if(refreshToken){
         await logoutUser(refreshToken.toString())

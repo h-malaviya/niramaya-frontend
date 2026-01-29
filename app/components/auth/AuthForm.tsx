@@ -142,7 +142,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       }
 
       const decoded = decodeJWT(res.access_token)
-
+     
       setAuthCookies(
         res.access_token,
         res.refresh_token,
@@ -164,8 +164,6 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       }
     }
   }
-
-
 
   return (
     <div>

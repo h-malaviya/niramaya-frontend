@@ -38,7 +38,6 @@ export const signupUser = async (payload: {
 }
 
 export const logoutUser = async (refreshToken: string) => {
-  console.log("logout called");
   
   return api.post(`/logout?refresh_token=${refreshToken}`)
 }
