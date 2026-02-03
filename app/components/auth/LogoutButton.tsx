@@ -8,19 +8,22 @@ export const LogoutButton = () => {
     try {
 
       const refreshToken = localStorage.getItem('refresh_token')
-    
       
       if(refreshToken){
         await logoutUser(refreshToken.toString())
       }
       clearAuthCookies()
-
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('role')
       window.location.href = '/login'
     
     } catch (err) {
       
       console.error('Session already expired')
-    } 
+    } finally{
+
+    }
   }
 
   return (

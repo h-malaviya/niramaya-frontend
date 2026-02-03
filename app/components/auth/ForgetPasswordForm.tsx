@@ -5,7 +5,7 @@ import { forgotPassword } from '@/app/lib/authApi'
 import { emailRegex } from '@/app/lib/utils'
 
 export default function ForgotPasswordForm() {
-
+    const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState({
         email: '',
     })
@@ -40,18 +40,20 @@ export default function ForgotPasswordForm() {
             <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
         )
 
-    
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
         if (!isFormValid) return
-
+        setIsLoading(true)
         try {
             await forgotPassword(formData.email)
-            alert('If the email exists, a reset link has been sent.')
+            alert('Reset link has been sent.')
         } catch (err: any) {
             alert(err.message || 'Something went wrong')
+        } finally {
+            setIsLoading(false)
         }
     }
 
@@ -75,15 +77,24 @@ export default function ForgotPasswordForm() {
 
             <button
                 type="submit"
-                disabled={!isFormValid}
-                className={`w-full btn-primary py-3 px-4 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 
-            ${isFormValid
+                disabled={!isFormValid || isLoading}
+                className={`w-full btn-primary py-3 px-4 font-medium rounded-lg transition-colors
+    focus:outline-none focus:ring-2 focus:ring-offset-2
+    ${isFormValid && !isLoading
                         ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
             >
-                Send Reset Link
+                {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Sending...
+                    </span>
+                ) : (
+                    'Send Reset Link'
+                )}
             </button>
+
 
             <div className="flex items-center justify-center mt-6">
                 <Link

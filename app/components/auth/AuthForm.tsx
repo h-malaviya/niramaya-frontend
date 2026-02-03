@@ -10,10 +10,10 @@ import { decodeJWT } from '@/app/lib/utils'
 interface AuthFormProps {
   mode: 'login' | 'signup'
 }
-import { emailRegex,passwordRegex } from '@/app/lib/utils'
+import { emailRegex, passwordRegex } from '@/app/lib/utils'
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const isSignup = mode === 'signup'
-
+  const [isLoading, setIsLoading] = useState(false)
   const [userType, setUserType] = useState<AccountType>('patient')
   const [showPassword, setShowPassword] = useState(false)
 
@@ -86,7 +86,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     e.preventDefault()
 
     if (!isFormValid) return alert("Fix form errors")
-
+    setIsLoading(true)
     let res
 
     try {
@@ -142,14 +142,15 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       }
 
       const decoded = decodeJWT(res.access_token)
-     
+
       setAuthCookies(
         res.access_token,
         res.refresh_token,
         decoded.role
       )
-      localStorage.setItem("access_token",res.access_token)
-      localStorage.setItem("refresh_token",res.refresh_token)
+      localStorage.setItem("access_token", res.access_token)
+      localStorage.setItem("refresh_token", res.refresh_token)
+      localStorage.setItem("role", decoded.role)
       window.location.href =
         decoded.role === 'doctor'
           ? '/doctor/home'
@@ -162,6 +163,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       } else {
         alert(err?.message || 'Something went wrong')
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -331,11 +334,20 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         <button
           type="submit"
-          className={`btn-primary ${isSignup ? 'md:col-span-2' : 'w-full'
-            }`}
+          disabled={isLoading}
+          className={`btn-primary ${isSignup ? 'md:col-span-2' : 'w-full'}
+    ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
-          {isSignup ? 'Sign Up' : 'Login'}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              {isSignup ? 'Signing up...' : 'Logging in...'}
+            </span>
+          ) : (
+            isSignup ? 'Sign Up' : 'Login'
+          )}
         </button>
+
       </form>
 
       <p className="mt-4 text-center text-sm">
