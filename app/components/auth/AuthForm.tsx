@@ -31,7 +31,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
-
+  const today = new Date().toISOString().split('T')[0]
   useEffect(() => {
     const newErrors: Record<string, string> = {}
 
@@ -51,7 +51,18 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       if (!formData.firstName) newErrors.firstName = 'First name is required'
       if (!formData.lastName) newErrors.lastName = 'Last name is required'
       if (!formData.gender) newErrors.gender = 'Gender is required'
-      if (!formData.dob) newErrors.dob = 'Date of birth is required'
+      if (!formData.dob) {
+        newErrors.dob = 'Date of birth is required'
+      } else {
+        const dobDate = new Date(formData.dob)
+        const todayDate = new Date()
+
+        if (isNaN(dobDate.getTime())) {
+          newErrors.dob = 'Invalid date of birth'
+        } else if (dobDate > todayDate) {
+          newErrors.dob = 'Date of birth cannot be in the future'
+        }
+      }
     }
 
     if (isSignup && userType === 'doctor') {
@@ -86,6 +97,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     e.preventDefault()
 
     if (!isFormValid) return alert("Fix form errors")
+    setIsLoading(true)
     setIsLoading(true)
     let res
 
@@ -143,6 +155,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
       const decoded = decodeJWT(res.access_token)
 
+
       setAuthCookies(
         res.access_token,
         res.refresh_token,
@@ -165,7 +178,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       }
     } finally {
       setIsLoading(false)
-    }
+    } 
   }
 
   return (
@@ -224,9 +237,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <input
                 type="date"
                 className="input"
-                onChange={e =>
-                  handleChange('dob', e.target.value)
-                }
+                max={today}
+                onChange={e => handleChange('dob', e.target.value)}
               />
               {renderError('dob')}
             </div>
@@ -346,7 +358,16 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           ) : (
             isSignup ? 'Sign Up' : 'Login'
           )}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              {isSignup ? 'Signing up...' : 'Logging in...'}
+            </span>
+          ) : (
+            isSignup ? 'Sign Up' : 'Login'
+          )}
         </button>
+
 
       </form>
 

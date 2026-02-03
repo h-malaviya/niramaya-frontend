@@ -1,4 +1,6 @@
 import './globals.css'
+import { ToastProvider } from './components/providers/ToastProvider'
+
 export default async function Layout({
     children
 }: {
@@ -6,11 +8,12 @@ export default async function Layout({
 }) {
     
     return (
-        <html>
+        <html lang="en">
             <body>
-                {children}
+                <ToastProvider>
+                    {children}
+                </ToastProvider>
             </body>
         </html>
-
     );
 }

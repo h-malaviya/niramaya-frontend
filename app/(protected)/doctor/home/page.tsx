@@ -5,7 +5,7 @@ export default function DoctorHome(){
     return(
         <>
             <h1>Doctor home</h1>
-            <LogoutButton/>
+            {/* <LogoutButton/> */}
         </>
     );
 }
