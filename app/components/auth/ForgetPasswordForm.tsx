@@ -9,7 +9,6 @@ export default function ForgotPasswordForm() {
     const [formData, setFormData] = useState({
         email: '',
     })
-
     const [errors, setErrors] = useState<Record<string, string>>({})
 
     useEffect(() => {
@@ -29,12 +28,10 @@ export default function ForgotPasswordForm() {
         [errors, formData.email]
     )
 
-    // Helper to handle input changes
     const handleChange = (key: string, value: string) => {
         setFormData(prev => ({ ...prev, [key]: value }))
     }
 
-    // Helper to render errors (Consistent with your AuthForm)
     const renderError = (key: string) =>
         errors[key] && (
             <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
@@ -47,6 +44,7 @@ export default function ForgotPasswordForm() {
 
         if (!isFormValid) return
         setIsLoading(true)
+        setIsLoading(true)
         try {
             await forgotPassword(formData.email)
             alert('Reset link has been sent.')
@@ -56,7 +54,6 @@ export default function ForgotPasswordForm() {
             setIsLoading(false)
         }
     }
-
 
     return (
 
@@ -71,7 +68,7 @@ export default function ForgotPasswordForm() {
                     value={formData.email}
                     onChange={e => handleChange('email', e.target.value)}
                 />
-                {/* This error updates automatically via useEffect */}
+
                 {renderError('email')}
             </div>
 
@@ -94,6 +91,7 @@ export default function ForgotPasswordForm() {
                     'Send Reset Link'
                 )}
             </button>
+
 
 
             <div className="flex items-center justify-center mt-6">
