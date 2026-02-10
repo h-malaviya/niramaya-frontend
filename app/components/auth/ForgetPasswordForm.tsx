@@ -9,7 +9,6 @@ export default function ForgotPasswordForm() {
     const [formData, setFormData] = useState({
         email: '',
     })
-
     const [errors, setErrors] = useState<Record<string, string>>({})
 
     useEffect(() => {
@@ -29,18 +28,14 @@ export default function ForgotPasswordForm() {
         [errors, formData.email]
     )
 
-    // Helper to handle input changes
     const handleChange = (key: string, value: string) => {
         setFormData(prev => ({ ...prev, [key]: value }))
     }
 
-    // Helper to render errors (Consistent with your AuthForm)
     const renderError = (key: string) =>
         errors[key] && (
             <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
         )
-
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -51,12 +46,15 @@ export default function ForgotPasswordForm() {
             await forgotPassword(formData.email)
             alert('Reset link has been sent.')
         } catch (err: any) {
-            alert(err.message || 'Something went wrong')
+            if (err?.response?.status === 404) {
+                alert(err.response.data.detail) 
+            } else {
+                alert(err?.message || 'Something went wrong')
+            }
         } finally {
             setIsLoading(false)
         }
     }
-
 
     return (
 
@@ -71,7 +69,7 @@ export default function ForgotPasswordForm() {
                     value={formData.email}
                     onChange={e => handleChange('email', e.target.value)}
                 />
-                {/* This error updates automatically via useEffect */}
+
                 {renderError('email')}
             </div>
 
@@ -79,8 +77,8 @@ export default function ForgotPasswordForm() {
                 type="submit"
                 disabled={!isFormValid || isLoading}
                 className={`w-full btn-primary py-3 px-4 font-medium rounded-lg transition-colors
-    focus:outline-none focus:ring-2 focus:ring-offset-2
-    ${isFormValid && !isLoading
+                focus:outline-none focus:ring-2 focus:ring-offset-2
+                ${isFormValid && !isLoading
                         ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
@@ -94,6 +92,7 @@ export default function ForgotPasswordForm() {
                     'Send Reset Link'
                 )}
             </button>
+
 
 
             <div className="flex items-center justify-center mt-6">

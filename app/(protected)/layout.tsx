@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import NavBar from '../components/common/NavBar'
 
-import NavBar from '../components/home/NavBar'
+
 export default async function ProtectedLayout({
     children,
 }: {
@@ -11,22 +12,12 @@ export default async function ProtectedLayout({
 
     if (!token) redirect('/login')
 
-    const res = await fetch('http://127.0.0.1:8000/validate', {
-        method: 'GET',
-        headers: {
-            Cookie: `refresh_token=${token}`,
-        },
-        cache: 'no-store',
-    })
-
-    if (!res.ok) {
-        redirect('/login')
-    }
-
     return (
-        <>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
             <NavBar />
-            {children}
-        </>
+            <main className="flex-1">
+                {children}
+            </main>
+        </div>
     )
 }
