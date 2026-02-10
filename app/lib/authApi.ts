@@ -10,9 +10,7 @@ export const loginUser = async (payload: {
     const res = await api.post('/login', payload)
     return res.data
   } catch (err: any) {
-    if (err.response?.status === 409) {
-      throw new Error("CONCURRENT_LOGIN")
-    }
+    
     throw err
   }
 }

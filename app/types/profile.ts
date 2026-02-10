@@ -29,18 +29,27 @@ export interface ProfileResponse {
   doctor_profile?: DoctorProfile
 }
 
-export interface UpdateUserProfilePayload {
-  first_name?: string
-  last_name?: string
-  gender?: string
-  date_of_birth?: string
+export interface UpdateProfilePayload {
+  user?: {
+    first_name?: string
+    last_name?: string
+    phone_number?: string
+    address?: string
+    city?: string
+    state?: string
+    country?: string
+    gender?: string
+    date_of_birth?: string
+    profile_image_url?:string
+  }
+  doctor?: {
+    experience_years?: number
+    consultation_fee?: number
+    about?: string
+    qualifications?: string[]
+  }
 }
 
-export interface UpdateDoctorProfilePayload {
-  qualifications?: string
-  experience_years?: number
-  category_names?: string[]
-}
 export interface ProfileFormData {
   firstName: string
   lastName: string

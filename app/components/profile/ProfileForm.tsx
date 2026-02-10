@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { ProfileFormData, ProfileResponse} from '../../types/profile';
-import { useToast } from '../../lib/hooks/useToast';
+import { ProfileFormData, ProfileResponse, UpdateProfilePayload } from '../../types/profile';
+import {  useToastContext } from '../../lib/hooks/useToast';
 import { ProfileSkeleton } from '../ui/LoadingSkeleton';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -11,80 +11,146 @@ import Select from '../ui/Select';
 import ProfileImageUpload from './ProfileImageUpload';
 
 import { Save, User, MapPin, Phone, Mail, Calendar, DollarSign } from 'lucide-react';
-import { getMyProfile } from '@/app/lib/profileApi';
+import { getMyProfile, updateProfile, uploadProfileImage } from '@/app/lib/profileApi';
+import { debug } from 'util';
 
 const ProfileForm = () => {
- 
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const { success, error: showError } = useToast();
+  const { success, error: showError } = useToastContext();
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
 
   const {
-  register,
-  handleSubmit,
-  formState: { errors, isDirty },
-  reset,
-  watch,
-  setValue
-} = useForm<ProfileFormData>()
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+    reset,
+    watch,
+    setValue
+  } = useForm<ProfileFormData>()
 
 
   useEffect(() => {
-  const loadProfile = async () => {
-    try {
-      setLoading(true)
+    const loadProfile = async () => {
+      try {
+        setLoading(true)
 
-      const data = await getMyProfile()
-      setProfile(data)
+        const data = await getMyProfile()
+        setProfile(data)
 
-      reset({
-        firstName: data.user.first_name,
-        lastName: data.user.last_name,
-        dateOfBirth: data.user.date_of_birth,
-        gender: data.user.gender,
-        phone: data.user.phone_number ?? "",
-        address: data.user.address ?? "",
-        city: data.user.city ?? "",
-        state: data.user.state ?? "",
-        country: data.user.country ?? "",
+        reset({
+          firstName: data.user.first_name,
+          lastName: data.user.last_name,
+          dateOfBirth: data.user.date_of_birth,
+          gender: data.user.gender,
+          phone: data.user.phone_number ?? "",
+          address: data.user.address ?? "",
+          city: data.user.city ?? "",
+          state: data.user.state ?? "",
+          country: data.user.country ?? "",
 
-        ...(data.doctor_profile && {
-          experience: data.doctor_profile.experience_years,
-          about: data.doctor_profile.about ?? "",
-          fees: data.doctor_profile.consultation_fee ?? 0,
-          category: data.doctor_profile.qualifications?.[0] ?? ""
+          ...(data.doctor_profile && {
+            experience: data.doctor_profile.experience_years,
+            about: data.doctor_profile.about ?? "",
+            fees: data.doctor_profile.consultation_fee ?? 0,
+            category: data.doctor_profile.qualifications?.[0] ?? ""
+          })
         })
+      } catch {
+        showError("Failed to load profile")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [reset])
+
+  const onSubmit = async (data: ProfileFormData) => {
+    try {
+      setSubmitting(true)
+
+      const payload: UpdateProfilePayload = {
+        user: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          gender: data.gender,
+          date_of_birth: data.dateOfBirth,
+          phone_number: data.phone,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          profile_image_url: profile?.user.profile_image_url,
+        },
+      }
+
+      // 👨‍⚕️ Doctor-specific block
+      if (profile?.doctor_profile) {
+        payload.doctor = {
+          experience_years: data.experience,
+          consultation_fee: data.fees,
+          about: data.about,
+          qualifications: data.category
+            ? [data.category]
+            : undefined,
+        }
+      }
+      const updated = await updateProfile(payload)
+
+      // ✅ Update local profile state
+      setProfile(updated)
+
+      // ✅ Reset form with updated values
+      reset({
+        firstName: updated.user.first_name,
+        lastName: updated.user.last_name,
+        dateOfBirth: updated.user.date_of_birth,
+        gender: updated.user.gender,
+        phone: updated.user.phone_number ?? "",
+        address: updated.user.address ?? "",
+        city: updated.user.city ?? "",
+        state: updated.user.state ?? "",
+        country: updated.user.country ?? "",
+
+        ...(updated.doctor_profile && {
+          experience: updated.doctor_profile.experience_years,
+          about: updated.doctor_profile.about ?? "",
+          fees: updated.doctor_profile.consultation_fee ?? 0,
+          category: updated.doctor_profile.qualifications?.[0] ?? "",
+        }),
       })
-    } catch {
-      showError("Failed to load profile")
+
+      success("Profile updated successfully")
+    } catch (err: any) {
+      showError(err?.message || "Failed to update profile")
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
-  loadProfile()
-}, [reset])
-
-  const onSubmit = async () => {
-    if (!User) return;
-
-    try {
-      setSubmitting(true);
-      
-      
-    } catch (err) {
-      showError('Failed to update profile. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleImageUpload = async (file: File) => {
     try {
-      
-    } catch (err) {
-      showError('Failed to upload image. Please try again.');
+      const res = await uploadProfileImage(file)
+
+      // 🔥 Update profile image locally (no refetch needed)
+      setProfile((prev) => {
+        if (!prev) return prev
+
+        return {
+          ...prev,
+          user: {
+            ...prev.user,
+            profile_image_url: res.image_url,
+          },
+        }
+      })
+
+      success(res.message || "Profile image updated successfully")
+    } catch (err: any) {
+      showError(err?.message || "Failed to upload image. Please try again.")
     }
   };
 
@@ -181,7 +247,7 @@ const ProfileForm = () => {
         </div>
 
         {/* Contact Information */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-8 space-y-6 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-slide-in-right" style={{animationDelay: '0.1s'}}>
+        <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-8 space-y-6 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-slide-in-right" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center space-x-3 mb-6">
             <div className="bg-green-100 p-2 rounded-lg">
               <MapPin className="w-6 h-6 text-green-600" />
@@ -232,7 +298,7 @@ const ProfileForm = () => {
 
       {/* Doctor-specific fields */}
       {profile?.doctor_profile && (
-        <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-8 border-t-4 border-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+        <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-8 border-t-4 border-purple-500 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center space-x-3 mb-8">
             <div className="bg-purple-100 p-2 rounded-lg">
               <DollarSign className="w-6 h-6 text-purple-600" />
@@ -241,7 +307,7 @@ const ProfileForm = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
 
             <Input
               label="Consultation Fees ($)"

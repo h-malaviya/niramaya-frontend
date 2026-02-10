@@ -4,18 +4,21 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AccountTypeSelector, AccountType } from './AccountTypeSelector'
 import { CategoryDropdown } from './CategoryDropdown'
-import { loginUser, signupUser, logoutUser } from '@/app/lib/authApi'
+import { loginUser, signupUser } from '@/app/lib/authApi'
 import { setAuthCookies } from '@/app/lib/authCookies'
-import { decodeJWT } from '@/app/lib/utils'
+import { decodeJWT, emailRegex, passwordRegex } from '@/app/lib/utils'
+import RedirectOverlay from '../common/RedirectOverlay'
+
 interface AuthFormProps {
   mode: 'login' | 'signup'
 }
-import { emailRegex, passwordRegex } from '@/app/lib/utils'
+
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const isSignup = mode === 'signup'
   const [isLoading, setIsLoading] = useState(false)
   const [userType, setUserType] = useState<AccountType>('patient')
   const [showPassword, setShowPassword] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -30,8 +33,13 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     categories: [] as string[],
   })
 
+  // 1. Add 'touched' state to track which fields the user has visited
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+
   const today = new Date().toISOString().split('T')[0]
+
+  // 2. Real-time validation (Always runs, but errors are hidden unless touched)
   useEffect(() => {
     const newErrors: Record<string, string> = {}
 
@@ -79,25 +87,37 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     setErrors(newErrors)
   }, [formData, userType, isSignup])
 
-  const isFormValid = useMemo(
-    () => Object.keys(errors).length === 0,
-    [errors]
-  )
-
   const handleChange = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }))
   }
 
-  const renderError = (key: string) =>
-    errors[key] && (
-      <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
-    )
+  // 3. Mark field as touched when user leaves the input (onBlur)
+  const handleBlur = (key: string) => {
+    setTouched(prev => ({ ...prev, [key]: true }))
+  }
+
+  // 4. Only render error if the field has been touched
+  const renderError = (key: string) => {
+    const hasError = errors[key]
+    const isTouched = touched[key]
+
+    // Only show if error exists AND (field was touched OR form was submitted)
+    if (hasError && isTouched) {
+      return <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
+    }
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!isFormValid) return alert("Fix form errors")
-    setIsLoading(true)
+    // 5. On submit, mark ALL fields as touched to show any missing required fields
+    const allTouched: Record<string, boolean> = {}
+    Object.keys(formData).forEach(key => allTouched[key] = true)
+    setTouched(allTouched)
+
+    if (Object.keys(errors).length > 0) return
+
     setIsLoading(true)
     let res
 
@@ -155,7 +175,6 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
       const decoded = decodeJWT(res.access_token)
 
-
       setAuthCookies(
         res.access_token,
         res.refresh_token,
@@ -164,10 +183,11 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       localStorage.setItem("access_token", res.access_token)
       localStorage.setItem("refresh_token", res.refresh_token)
       localStorage.setItem("role", decoded.role)
+      setIsRedirecting(true)
       window.location.href =
         decoded.role === 'doctor'
-          ? '/doctor/home'
-          : '/patient/home'
+          ? '/doctor/appointments'
+          : '/patient/doctors'
     } catch (err: any) {
       console.error(err)
 
@@ -177,8 +197,15 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         alert(err?.message || 'Something went wrong')
       }
     } finally {
-      setIsLoading(false)
-    } 
+      if (!isRedirecting) {
+        setIsLoading(false)
+      }
+    }
+  }
+  if (isRedirecting) {
+    return (
+      <RedirectOverlay title='Taking you to your dashboard'/>
+    )
   }
 
   return (
@@ -200,9 +227,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <input
                 className="input"
                 placeholder="First Name"
-                onChange={e =>
-                  handleChange('firstName', e.target.value)
-                }
+                value={formData.firstName}
+                onChange={e => handleChange('firstName', e.target.value)}
+                onBlur={() => handleBlur('firstName')} // Added onBlur
               />
               {renderError('firstName')}
             </div>
@@ -211,9 +238,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <input
                 className="input"
                 placeholder="Last Name"
-                onChange={e =>
-                  handleChange('lastName', e.target.value)
-                }
+                value={formData.lastName}
+                onChange={e => handleChange('lastName', e.target.value)}
+                onBlur={() => handleBlur('lastName')} // Added onBlur
               />
               {renderError('lastName')}
             </div>
@@ -221,9 +248,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             <div>
               <select
                 className="input"
-                onChange={e =>
-                  handleChange('gender', e.target.value)
-                }
+                value={formData.gender}
+                onChange={e => handleChange('gender', e.target.value)}
+                onBlur={() => handleBlur('gender')} // Added onBlur
               >
                 <option value="">Gender</option>
                 <option value="male">Male</option>
@@ -238,7 +265,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 type="date"
                 className="input"
                 max={today}
+                value={formData.dob}
                 onChange={e => handleChange('dob', e.target.value)}
+                onBlur={() => handleBlur('dob')} // Added onBlur
               />
               {renderError('dob')}
             </div>
@@ -250,9 +279,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             type="email"
             className="input"
             placeholder="Email"
-            onChange={e =>
-              handleChange('email', e.target.value)
-            }
+            value={formData.email}
+            onChange={e => handleChange('email', e.target.value)}
+            onBlur={() => handleBlur('email')} // Added onBlur
           />
           {renderError('email')}
         </div>
@@ -263,9 +292,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <input
                 className="input"
                 placeholder="Qualifications"
-                onChange={e =>
-                  handleChange('qualifications', e.target.value)
-                }
+                value={formData.qualifications}
+                onChange={e => handleChange('qualifications', e.target.value)}
+                onBlur={() => handleBlur('qualifications')} // Added onBlur
               />
               {renderError('qualifications')}
             </div>
@@ -274,9 +303,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <input
                 className="input"
                 placeholder="Experience (Years)"
-                onChange={e =>
-                  handleChange('experience', e.target.value)
-                }
+                value={formData.experience}
+                onChange={e => handleChange('experience', e.target.value)}
+                onBlur={() => handleBlur('experience')} // Added onBlur
               />
               {renderError('experience')}
             </div>
@@ -285,13 +314,13 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <CategoryDropdown
                 value={formData.categories}
                 onChange={(categories) =>
-                  setFormData(prev => ({
-                    ...prev,
-                    categories,
-                  }))
+                  setFormData(prev => ({ ...prev, categories }))
                 }
               />
-              {renderError('categories')}
+              {/* CategoryDropdown usually handles its own blur or you can mark touched on interaction */}
+              {errors.categories && isSignup && (formData.categories.length === 0 && touched.categories) && (
+                <p className="mt-1 text-sm text-red-500">{errors.categories}</p>
+              )}
             </div>
           </>
         )}
@@ -301,9 +330,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             type={showPassword ? 'text' : 'password'}
             className="input"
             placeholder="Password"
-            onChange={e =>
-              handleChange('password', e.target.value)
-            }
+            value={formData.password}
+            onChange={e => handleChange('password', e.target.value)}
+            onBlur={() => handleBlur('password')} // Added onBlur
           />
           {renderError('password')}
         </div>
@@ -314,9 +343,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               type={showPassword ? 'text' : 'password'}
               className="input"
               placeholder="Confirm Password"
-              onChange={e =>
-                handleChange('confirmPassword', e.target.value)
-              }
+              value={formData.confirmPassword}
+              onChange={e => handleChange('confirmPassword', e.target.value)}
+              onBlur={() => handleBlur('confirmPassword')} // Added onBlur
             />
             {renderError('confirmPassword')}
           </div>
@@ -329,6 +358,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
+              checked={showPassword}
               onChange={() => setShowPassword(!showPassword)}
             />
             Show Password
@@ -348,7 +378,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           type="submit"
           disabled={isLoading}
           className={`btn-primary ${isSignup ? 'md:col-span-2' : 'w-full'}
-    ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
@@ -358,17 +388,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           ) : (
             isSignup ? 'Sign Up' : 'Login'
           )}
-          {isLoading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              {isSignup ? 'Signing up...' : 'Logging in...'}
-            </span>
-          ) : (
-            isSignup ? 'Sign Up' : 'Login'
-          )}
         </button>
-
-
       </form>
 
       <p className="mt-4 text-center text-sm">

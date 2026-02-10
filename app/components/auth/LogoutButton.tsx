@@ -27,7 +27,7 @@ export const LogoutButton = () => {
     } catch (err) {
       console.error('Session already expired')
     } finally{
-
+      setIsLoading(false)
     }
   }
 

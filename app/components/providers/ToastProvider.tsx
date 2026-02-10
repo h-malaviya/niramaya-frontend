@@ -4,10 +4,11 @@
 
 import { ToastProvider as ToastContextProvider } from '../../lib/hooks/useToast';
 import { ToastContainer } from '../ui/Toast';
-import { useToast } from '../../lib/hooks/useToast';
+import { useToastContext } from '../../lib/hooks/useToast';
+
 
 const ToastProviderInner = ({ children }: { children: React.ReactNode }) => {
-  const { toasts, removeToast } = useToast();
+  const { toasts, removeToast } = useToastContext();
 
   return (
     <>

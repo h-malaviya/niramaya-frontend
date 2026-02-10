@@ -1,5 +1,3 @@
-// Responsive Navigation Bar with Niramaya branding
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,6 +8,7 @@ import Button from '../ui/Button';
 import { clearAuthCookies } from '@/app/lib/authCookies';
 import { logoutUser } from '@/app/lib/authApi';
 import { getMyProfile } from '@/app/lib/profileApi';
+import { usePathname } from 'next/navigation';
 
 interface NavBarProps {
   currentUser?: ProfileResponse;
@@ -19,6 +18,7 @@ const NavBar = ({ currentUser }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const role = localStorage.getItem('role')
   useEffect(() => {
     // Load user data if not provided
@@ -45,31 +45,29 @@ const NavBar = ({ currentUser }: NavBarProps) => {
     setIsProfileDropdownOpen(!isProfileDropdownOpen);
   };
 
-  const handleLogout =async () => {
+  const handleLogout = async () => {
     const refresh_token = localStorage.getItem('refresh_token')
+    setIsLoading(true)
     await logoutUser(refresh_token || '')
-    console.log('Logout clicked');
+
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('role')
     clearAuthCookies()
+    setIsLoading(false)
     window.location.href = '/login';
   };
 
   const getNavigationItems = () => {
-    
-    const commonItems = [
-      { name: 'Home', href: `/${role}/home`, icon: Home },
-    ];
 
     if (role === 'doctor') {
       return [
-        ...commonItems,
         { name: 'Appointments', href: '/doctor/appointments', icon: Calendar },
-        { name: 'Patients', href: '/doctor/patients', icon: Users },
-      ];
+        { name: 'Dashboard', href: '/doctor/analytics', icon: Home },
+      ]
     } else {
       return [
-        ...commonItems,
+
         { name: 'Appointments', href: '/patient/appointments', icon: Calendar },
         { name: 'Doctors', href: '/patient/doctors', icon: Users },
       ];
@@ -77,6 +75,7 @@ const NavBar = ({ currentUser }: NavBarProps) => {
   };
 
   const navigationItems = getNavigationItems();
+  const pathname = usePathname()
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
@@ -103,7 +102,12 @@ const NavBar = ({ currentUser }: NavBarProps) => {
                   <a
                     key={item.name}
                     href={item.href}
-                    className="flex items-center px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 hover:shadow-sm"
+                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-sm
+                        ${pathname.startsWith(item.href)
+                        ? 'bg-blue-100 text-blue-700 shadow-sm'
+                        : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                      }
+                    `}
                   >
                     <Icon className="w-4 h-4 mr-2" />
                     {item.name}
@@ -136,7 +140,7 @@ const NavBar = ({ currentUser }: NavBarProps) => {
                     </div>
                   )}
                   <span className="ml-3 text-sm font-semibold text-gray-800">
-                    {profile?.user? `${profile?.user.first_name} ${profile?.user.last_name}` : 'Loading...'}
+                    {profile?.user ? `${profile?.user.first_name} ${profile?.user.last_name}` : 'Loading...'}
                   </span>
                 </button>
 
@@ -155,21 +159,14 @@ const NavBar = ({ currentUser }: NavBarProps) => {
                         <User className="w-4 h-4 mr-3" />
                         Profile
                       </a>
-                      <a
-                        href="/settings"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        <Settings className="w-4 h-4 mr-3" />
-                        Settings
-                      </a>
+
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         role="menuitem"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
-                        Sign out
+                        {isLoading ? "Signing out..." : "Sign out"}
                       </button>
                     </div>
                   </div>
@@ -206,7 +203,12 @@ const NavBar = ({ currentUser }: NavBarProps) => {
                 <a
                   key={item.name}
                   href={item.href}
-                  className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-all
+                  ${pathname.startsWith(item.href)
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                  }
+                `}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <Icon className="w-5 h-5 mr-3" />
@@ -215,7 +217,7 @@ const NavBar = ({ currentUser }: NavBarProps) => {
               );
             })}
           </div>
-          
+
           {/* Mobile profile section */}
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-5">

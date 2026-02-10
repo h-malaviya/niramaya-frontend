@@ -37,19 +37,20 @@ export default function ForgotPasswordForm() {
             <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
         )
 
-
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
         if (!isFormValid) return
         setIsLoading(true)
-        setIsLoading(true)
         try {
             await forgotPassword(formData.email)
             alert('Reset link has been sent.')
         } catch (err: any) {
-            alert(err.message || 'Something went wrong')
+            if (err?.response?.status === 404) {
+                alert(err.response.data.detail) 
+            } else {
+                alert(err?.message || 'Something went wrong')
+            }
         } finally {
             setIsLoading(false)
         }
@@ -76,8 +77,8 @@ export default function ForgotPasswordForm() {
                 type="submit"
                 disabled={!isFormValid || isLoading}
                 className={`w-full btn-primary py-3 px-4 font-medium rounded-lg transition-colors
-    focus:outline-none focus:ring-2 focus:ring-offset-2
-    ${isFormValid && !isLoading
+                focus:outline-none focus:ring-2 focus:ring-offset-2
+                ${isFormValid && !isLoading
                         ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}

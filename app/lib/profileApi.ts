@@ -1,4 +1,4 @@
-import { DoctorProfile, ProfileResponse, UpdateDoctorProfilePayload, UpdateUserProfilePayload, UserProfile } from "../types/profile"
+import { DoctorProfile, ProfileResponse, UpdateProfilePayload, UserProfile } from "../types/profile"
 import api from "./apiClient"
 
 export const getMyProfile = async (): Promise<ProfileResponse> => {
@@ -6,17 +6,10 @@ export const getMyProfile = async (): Promise<ProfileResponse> => {
   return res.data
 }
 
-export const updateUserProfile = async (
-  payload: UpdateUserProfilePayload
-): Promise<UserProfile> => {
+export const updateProfile = async (
+  payload: UpdateProfilePayload
+): Promise<ProfileResponse> => {
   const res = await api.put("/profile/me", payload)
-  return res.data
-}
-
-export const updateDoctorProfile = async (
-  payload: UpdateDoctorProfilePayload
-): Promise<DoctorProfile> => {
-  const res = await api.put("/profile/doctor", payload)
   return res.data
 }
 
