@@ -19,7 +19,11 @@ const NavBar = ({ currentUser }: NavBarProps) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const role = localStorage.getItem('role')
+  const [role, setRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRole(localStorage.getItem("role"))
+  }, [])
   useEffect(() => {
     // Load user data if not provided
     if (!currentUser) {
@@ -205,9 +209,9 @@ const NavBar = ({ currentUser }: NavBarProps) => {
                   href={item.href}
                   className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-all
                   ${pathname.startsWith(item.href)
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
-                  }
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                    }
                 `}
                   onClick={() => setIsMenuOpen(false)}
                 >

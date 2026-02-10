@@ -3,14 +3,20 @@ export const setAuthCookies = (
   refreshToken: string,
   role: string
 ) => {
-  document.cookie = `access_token=${accessToken}; path=/`
-  document.cookie = `refresh_token=${refreshToken}; path=/`
-  document.cookie = `role=${role}; path=/`
-}
+  const cookieOptions = "path=/; SameSite=Lax";
+  
+  document.cookie = `access_token=${accessToken}; ${cookieOptions}`;
+  document.cookie = `refresh_token=${refreshToken}; ${cookieOptions}`;
+  document.cookie = `role=${role}; ${cookieOptions}`;
+};
 
+/**
+ * Clear authentication cookies on the client side
+ */
 export const clearAuthCookies = () => {
-  document.cookie = 'access_token=; path=/; max-age=0'
-  document.cookie = 'refresh_token=; path=/; max-age=0'
-  document.cookie = 'role=; path=/; max-age=0'
-}
-
+  const cookieOptions = "path=/; max-age=0; SameSite=Lax";
+  
+  document.cookie = `access_token=; ${cookieOptions}`;
+  document.cookie = `refresh_token=; ${cookieOptions}`;
+  document.cookie = `role=; ${cookieOptions}`;
+};
