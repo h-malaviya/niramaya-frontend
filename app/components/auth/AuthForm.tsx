@@ -1,24 +1,27 @@
-'use client'
+'use client';
 
-import React, { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { AccountTypeSelector, AccountType } from './AccountTypeSelector'
-import { CategoryDropdown } from './CategoryDropdown'
-import { loginUser, signupUser } from '@/app/lib/authApi'
-import { setAuthCookies } from '@/app/lib/authCookies'
-import { decodeJWT, emailRegex, passwordRegex } from '@/app/lib/utils'
-import RedirectOverlay from '../common/RedirectOverlay'
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AccountTypeSelector, AccountType } from './AccountTypeSelector';
+import { CategoryDropdown } from './CategoryDropdown';
+import { loginUser, signupUser } from '@/app/lib/authApi';
+import { setAuthCookies } from '@/app/lib/authCookies';
+import { decodeJWT, emailRegex, passwordRegex } from '@/app/lib/utils';
+import { getErrorMessage } from '@/app/lib/apiClient';
+import RedirectOverlay from '../common/RedirectOverlay';
 
 interface AuthFormProps {
-  mode: 'login' | 'signup'
+  mode: 'login' | 'signup';
 }
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
-  const isSignup = mode === 'signup'
-  const [isLoading, setIsLoading] = useState(false)
-  const [userType, setUserType] = useState<AccountType>('patient')
-  const [showPassword, setShowPassword] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  const isSignup = mode === 'signup';
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [userType, setUserType] = useState<AccountType>('patient');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -31,97 +34,152 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     qualifications: '',
     experience: '',
     categories: [] as string[],
-  })
+  });
 
-  // 1. Add 'touched' state to track which fields the user has visited
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0];
 
-  // 2. Real-time validation (Always runs, but errors are hidden unless touched)
+  // Prevent back button from showing auth pages after login
   useEffect(() => {
-    const newErrors: Record<string, string> = {}
+    // Check if user is already logged in
+    const refreshToken = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('refresh_token='))
+      ?.split('=')[1];
+
+    if (refreshToken) {
+      // User is logged in, redirect them away
+      const role = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('role='))
+        ?.split('=')[1];
+
+      const redirectUrl =
+        role === 'doctor' ? '/doctor/appointments' : '/patient/doctors';
+      
+      window.location.replace(redirectUrl); // Use replace to prevent back navigation
+    }
+
+    // Add state to history to detect back button
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = () => {
+      // If they try to go back, push the state again
+      window.history.pushState(null, '', window.location.href);
+      
+      // Check if they're logged in
+      const refreshToken = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('refresh_token='))
+        ?.split('=')[1];
+
+      if (refreshToken) {
+        // Redirect to dashboard instead of going back
+        const role = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('role='))
+          ?.split('=')[1];
+
+        const redirectUrl =
+          role === 'doctor' ? '/doctor/appointments' : '/patient/doctors';
+        
+        window.location.replace(redirectUrl);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Real-time validation
+  useEffect(() => {
+    const newErrors: Record<string, string> = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'Email is required';
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'Invalid email format';
     }
 
     if (!passwordRegex.test(formData.password))
-      newErrors.password = 'Password must be at least 6 characters'
+      newErrors.password = 'Password must be at least 6 characters';
 
     if (isSignup && formData.password !== formData.confirmPassword)
-      newErrors.confirmPassword = 'Passwords do not match'
+      newErrors.confirmPassword = 'Passwords do not match';
 
     if (isSignup) {
-      if (!formData.firstName) newErrors.firstName = 'First name is required'
-      if (!formData.lastName) newErrors.lastName = 'Last name is required'
-      if (!formData.gender) newErrors.gender = 'Gender is required'
+      if (!formData.firstName) newErrors.firstName = 'First name is required';
+      if (!formData.lastName) newErrors.lastName = 'Last name is required';
+      if (!formData.gender) newErrors.gender = 'Gender is required';
       if (!formData.dob) {
-        newErrors.dob = 'Date of birth is required'
+        newErrors.dob = 'Date of birth is required';
       } else {
-        const dobDate = new Date(formData.dob)
-        const todayDate = new Date()
+        const dobDate = new Date(formData.dob);
+        const todayDate = new Date();
 
         if (isNaN(dobDate.getTime())) {
-          newErrors.dob = 'Invalid date of birth'
+          newErrors.dob = 'Invalid date of birth';
         } else if (dobDate > todayDate) {
-          newErrors.dob = 'Date of birth cannot be in the future'
+          newErrors.dob = 'Date of birth cannot be in the future';
         }
       }
     }
 
     if (isSignup && userType === 'doctor') {
       if (!formData.qualifications)
-        newErrors.qualifications = 'Qualifications required'
+        newErrors.qualifications = 'Qualifications required';
 
       if (!formData.experience)
-        newErrors.experience = 'Experience required'
+        newErrors.experience = 'Experience required';
+      else if (Number(formData.experience) < 0)
+        newErrors.experience = 'Experience must be positive';
 
       if (formData.categories.length === 0)
-        newErrors.categories = 'Select at least one category'
+        newErrors.categories = 'Select at least one category';
     }
 
-    setErrors(newErrors)
-  }, [formData, userType, isSignup])
+    setErrors(newErrors);
+  }, [formData, userType, isSignup]);
 
   const handleChange = (key: string, value: any) => {
-    setFormData(prev => ({ ...prev, [key]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
 
-  // 3. Mark field as touched when user leaves the input (onBlur)
   const handleBlur = (key: string) => {
-    setTouched(prev => ({ ...prev, [key]: true }))
-  }
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  };
 
-  // 4. Only render error if the field has been touched
   const renderError = (key: string) => {
-    const hasError = errors[key]
-    const isTouched = touched[key]
+    const hasError = errors[key];
+    const isTouched = touched[key];
 
-    // Only show if error exists AND (field was touched OR form was submitted)
     if (hasError && isTouched) {
-      return <p className="mt-1 text-sm text-red-500">{errors[key]}</p>
+      return <p className="mt-1 text-sm text-red-500">{errors[key]}</p>;
     }
-    return null
-  }
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    // 5. On submit, mark ALL fields as touched to show any missing required fields
-    const allTouched: Record<string, boolean> = {}
-    Object.keys(formData).forEach(key => allTouched[key] = true)
-    setTouched(allTouched)
+    // Mark all fields as touched
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(formData).forEach((key) => (allTouched[key] = true));
+    setTouched(allTouched);
 
-    if (Object.keys(errors).length > 0) return
+    // Check for validation errors
+    if (Object.keys(errors).length > 0) return;
 
-    setIsLoading(true)
-    let res
+    setIsLoading(true);
 
     try {
+      let res;
+
       if (isSignup) {
         const payload: any = {
           user_in: {
@@ -133,74 +191,83 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             gender: formData.gender,
             role: userType,
           },
-        }
+        };
 
         if (userType === 'doctor') {
           payload.doctor_data = {
             qualifications: [formData.qualifications],
             experience_years: Number(formData.experience),
             category_names: formData.categories,
-          }
+          };
         }
 
-        res = await signupUser(payload)
+        res = await signupUser(payload);
       } else {
+        // Login flow
         try {
           res = await loginUser({
             email: formData.email,
             password: formData.password,
             device_id: 'web',
             force: false,
-          })
+          });
         } catch (err: any) {
-          if (err.status === 409) {
+          // Handle device conflict (409)
+          if (err?.response?.status === 409) {
             const confirmForce = window.confirm(
-              "You're already logged in on another device. Logout there?"
-            )
+              "You're already logged in on another device. Do you want to logout from there and continue here?"
+            );
 
-            if (!confirmForce) return
+            if (!confirmForce) {
+              setIsLoading(false);
+              return;
+            }
 
+            // Retry with force flag
             res = await loginUser({
               email: formData.email,
               password: formData.password,
               device_id: 'web',
               force: true,
-            })
+            });
           } else {
-            alert(err.message || 'Login failed')
-            return
+            // Re-throw other errors
+            throw err;
           }
         }
       }
 
-      const decoded = decodeJWT(res.access_token)
+      // Decode JWT to get role
+      const decoded = decodeJWT(res.access_token);
 
-      setAuthCookies(
-        res.access_token,
-        res.refresh_token,
-        decoded.role
-      )
-      localStorage.setItem("access_token", res.access_token)
-      localStorage.setItem("refresh_token", res.refresh_token)
-      localStorage.setItem("role", decoded.role)
-      setIsRedirecting(true)
-      window.location.href =
-        decoded.role === 'doctor'
-          ? '/doctor/appointments'
-          : '/patient/doctors'
+      // Set cookies and localStorage
+      setAuthCookies(res.access_token, res.refresh_token, decoded.role);
+      localStorage.setItem('access_token', res.access_token);
+      localStorage.setItem('refresh_token', res.refresh_token);
+      localStorage.setItem('role', decoded.role);
+
+      // Show redirect overlay
+      setIsRedirecting(true);
+
+      // Redirect to appropriate dashboard
+      const redirectUrl =
+        decoded.role === 'doctor' ? '/doctor/appointments' : '/patient/doctors';
+      
+      // Use replace to prevent back button navigation to auth pages
+      window.location.replace(redirectUrl);
     } catch (err: any) {
-      console.error(err)
+      console.error('Auth error:', err);
 
-      if (err?.response?.status === 422) {
-        alert('Validation error. Please check inputs.')
-      } else {
-        alert(err?.message || 'Something went wrong')
-      }
-    } finally {
-      if (!isRedirecting) {
-        setIsLoading(false)
-      }
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage);
+
+      setIsLoading(false);
+      setIsRedirecting(false);
     }
+  };
+
+  if (isRedirecting) {
+    return <RedirectOverlay title="Taking you to your dashboard" />;
   }
   if (isRedirecting) {
     return (
@@ -216,10 +283,9 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
       <form
         onSubmit={handleSubmit}
-        className={`mt-8 ${isSignup
-          ? 'grid grid-cols-1 gap-6 md:grid-cols-2'
-          : 'space-y-5'
-          }`}
+        className={`mt-8 ${
+          isSignup ? 'grid grid-cols-1 gap-6 md:grid-cols-2' : 'space-y-5'
+        }`}
       >
         {isSignup && (
           <>
@@ -228,8 +294,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 className="input"
                 placeholder="First Name"
                 value={formData.firstName}
-                onChange={e => handleChange('firstName', e.target.value)}
-                onBlur={() => handleBlur('firstName')} // Added onBlur
+                onChange={(e) => handleChange('firstName', e.target.value)}
+                onBlur={() => handleBlur('firstName')}
               />
               {renderError('firstName')}
             </div>
@@ -239,8 +305,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 className="input"
                 placeholder="Last Name"
                 value={formData.lastName}
-                onChange={e => handleChange('lastName', e.target.value)}
-                onBlur={() => handleBlur('lastName')} // Added onBlur
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                onBlur={() => handleBlur('lastName')}
               />
               {renderError('lastName')}
             </div>
@@ -249,8 +315,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <select
                 className="input"
                 value={formData.gender}
-                onChange={e => handleChange('gender', e.target.value)}
-                onBlur={() => handleBlur('gender')} // Added onBlur
+                onChange={(e) => handleChange('gender', e.target.value)}
+                onBlur={() => handleBlur('gender')}
               >
                 <option value="">Gender</option>
                 <option value="male">Male</option>
@@ -266,8 +332,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 className="input"
                 max={today}
                 value={formData.dob}
-                onChange={e => handleChange('dob', e.target.value)}
-                onBlur={() => handleBlur('dob')} // Added onBlur
+                onChange={(e) => handleChange('dob', e.target.value)}
+                onBlur={() => handleBlur('dob')}
               />
               {renderError('dob')}
             </div>
@@ -280,8 +346,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             className="input"
             placeholder="Email"
             value={formData.email}
-            onChange={e => handleChange('email', e.target.value)}
-            onBlur={() => handleBlur('email')} // Added onBlur
+            onChange={(e) => handleChange('email', e.target.value)}
+            onBlur={() => handleBlur('email')}
           />
           {renderError('email')}
         </div>
@@ -293,19 +359,21 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 className="input"
                 placeholder="Qualifications"
                 value={formData.qualifications}
-                onChange={e => handleChange('qualifications', e.target.value)}
-                onBlur={() => handleBlur('qualifications')} // Added onBlur
+                onChange={(e) => handleChange('qualifications', e.target.value)}
+                onBlur={() => handleBlur('qualifications')}
               />
               {renderError('qualifications')}
             </div>
 
             <div>
               <input
+                type="number"
+                min="0"
                 className="input"
                 placeholder="Experience (Years)"
                 value={formData.experience}
-                onChange={e => handleChange('experience', e.target.value)}
-                onBlur={() => handleBlur('experience')} // Added onBlur
+                onChange={(e) => handleChange('experience', e.target.value)}
+                onBlur={() => handleBlur('experience')}
               />
               {renderError('experience')}
             </div>
@@ -314,25 +382,28 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <CategoryDropdown
                 value={formData.categories}
                 onChange={(categories) =>
-                  setFormData(prev => ({ ...prev, categories }))
+                  setFormData((prev) => ({ ...prev, categories }))
                 }
               />
-              {/* CategoryDropdown usually handles its own blur or you can mark touched on interaction */}
-              {errors.categories && isSignup && (formData.categories.length === 0 && touched.categories) && (
-                <p className="mt-1 text-sm text-red-500">{errors.categories}</p>
-              )}
+              {errors.categories &&
+                formData.categories.length === 0 &&
+                touched.categories && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.categories}
+                  </p>
+                )}
             </div>
           </>
         )}
 
-        <div>
+        <div className={isSignup ? '' : ''}>
           <input
             type={showPassword ? 'text' : 'password'}
             className="input"
             placeholder="Password"
             value={formData.password}
-            onChange={e => handleChange('password', e.target.value)}
-            onBlur={() => handleBlur('password')} // Added onBlur
+            onChange={(e) => handleChange('password', e.target.value)}
+            onBlur={() => handleBlur('password')}
           />
           {renderError('password')}
         </div>
@@ -344,16 +415,17 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               className="input"
               placeholder="Confirm Password"
               value={formData.confirmPassword}
-              onChange={e => handleChange('confirmPassword', e.target.value)}
-              onBlur={() => handleBlur('confirmPassword')} // Added onBlur
+              onChange={(e) => handleChange('confirmPassword', e.target.value)}
+              onBlur={() => handleBlur('confirmPassword')}
             />
             {renderError('confirmPassword')}
           </div>
         )}
 
         <div
-          className={`flex items-center justify-between text-sm ${isSignup ? 'md:col-span-2' : ''
-            }`}
+          className={`flex items-center justify-between text-sm ${
+            isSignup ? 'md:col-span-2' : ''
+          }`}
         >
           <label className="flex items-center gap-2">
             <input
@@ -365,10 +437,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           </label>
 
           {!isSignup && (
-            <Link
-              href="/forgot-password"
-              className="text-blue-500"
-            >
+            <Link href="/forgot-password" className="text-blue-500">
               Forgot password?
             </Link>
           )}
@@ -377,16 +446,19 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         <button
           type="submit"
           disabled={isLoading}
-          className={`btn-primary ${isSignup ? 'md:col-span-2' : 'w-full'}
-            ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`btn-primary ${isSignup ? 'md:col-span-2' : 'w-full'} ${
+            isLoading ? 'opacity-70 cursor-not-allowed' : ''
+          }`}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
               {isSignup ? 'Signing up...' : 'Logging in...'}
             </span>
+          ) : isSignup ? (
+            'Sign Up'
           ) : (
-            isSignup ? 'Sign Up' : 'Login'
+            'Login'
           )}
         </button>
       </form>
@@ -401,7 +473,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           </>
         ) : (
           <>
-            Don’t have an account?{' '}
+            Don't have an account?{' '}
             <Link href="/signup" className="text-blue-500">
               Signup
             </Link>
@@ -409,5 +481,5 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         )}
       </p>
     </div>
-  )
-}
+  );
+};

@@ -18,9 +18,7 @@ export async function fetchDoctorsFromServer(params: DoctorsApiParams) {
     pagination: data.pagination,
   }
   } catch (error) {
-    console.error("Error fetching doctors:", error)
-
-    
+   
     return {
       doctors: [],
       pagination: {
