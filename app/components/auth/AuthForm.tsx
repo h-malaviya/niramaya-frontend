@@ -269,6 +269,11 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   if (isRedirecting) {
     return <RedirectOverlay title="Taking you to your dashboard" />;
   }
+  if (isRedirecting) {
+    return (
+      <RedirectOverlay title='Taking you to your dashboard'/>
+    )
+  }
 
   return (
     <div>
