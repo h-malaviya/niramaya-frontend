@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import React from "react";
 import { Stethoscope } from "lucide-react";
 import DoctorsPageClient from "@/app/components/doctor/Doctorspageclient";
