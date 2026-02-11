@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { X } from "lucide-react";
 
@@ -21,6 +22,8 @@ interface DetailsSidebarProps {
   onFilesChange: (files: File[]) => void
   canShowForm: boolean
   onClose: () => void
+  isHolding:boolean
+  isConfirming:boolean
   onSlotSelect: (
     slotKey: string,
     start: string,
@@ -33,6 +36,7 @@ interface DetailsSidebarProps {
 export default function DetailsSidebar({
   selectedDate,
   selectedSlot,
+  isHolding,
   onClose,
   canShowForm,
   dayAvailability,
@@ -43,7 +47,7 @@ export default function DetailsSidebar({
   onDescriptionChange,
   onFilesChange
 }: DetailsSidebarProps) {
-
+  const [isConfirming, setIsConfirming] = useState(false)
   return (
     <>
       {/* Mobile Overlay */}
@@ -73,6 +77,7 @@ export default function DetailsSidebar({
           onSlotSelect={onSlotSelect}
           canShowForm={canShowForm}
           description={description}
+          isHolding={isHolding}
           files={files}
           onDescriptionChange={onDescriptionChange}
           onFilesChange={onFilesChange}
@@ -80,6 +85,7 @@ export default function DetailsSidebar({
 
         <SidebarFooter
           selectedDate={selectedDate}
+          isConfirming={isConfirming}
           selectedSlot={selectedSlot}
           onConfirmBooking={onConfirmBooking}
         />

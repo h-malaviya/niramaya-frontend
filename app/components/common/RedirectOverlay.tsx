@@ -12,15 +12,15 @@ export default function RedirectOverlay({
   subtitle = 'Taking you to the next step',
 }: RedirectOverlayProps) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-white/80 via-cyan-50/60 to-blue-50/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-linear-to-br from-white/80 via-cyan-50/60 to-blue-50/60 backdrop-blur-md">
       <div className="relative bg-white rounded-3xl p-10 shadow-2xl border border-slate-200 text-center max-w-sm w-full animate-scale-in">
         
         {/* Glow ring */}
-        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-cyan-500 to-blue-600 blur opacity-20" />
+        <div className="absolute -inset-1 rounded-3xl bg-linear-to-r from-cyan-500 to-blue-600 blur opacity-20" />
 
         {/* Loader */}
         <div className="relative mb-6 flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-xl">
+          <div className="w-16 h-16 rounded-full bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-xl">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
           </div>
         </div>

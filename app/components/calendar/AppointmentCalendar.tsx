@@ -9,7 +9,6 @@ import { DoctorSlotsRangeResponse } from "./Types";
 import { buildSlotsByDate } from "./slots";
 import api, { getErrorMessage } from "@/app/lib/apiClient";
 import { useToastContext } from "@/app/lib/hooks/useToast";
-import CalendarOverlayLoader from "./CalendarOverlayLoader";
 
 interface AppointmentCalendarProps {
   data: DoctorSlotsRangeResponse | null
@@ -28,7 +27,7 @@ export default function AppointmentCalendar({
   const [isHolding, setIsHolding] = useState(false)
   const { success, error: showError } = useToastContext();
   const [isLoadingSlots, setIsLoadingSlots] = useState(!data)
-
+  const [isConfirming, setIsConfirming] = useState(false)
   const [slotsData, setSlotsData] = useState<DoctorSlotsRangeResponse | null>(data)
   const slotsByDate = useMemo(
     () => buildSlotsByDate(data),
@@ -114,7 +113,7 @@ export default function AppointmentCalendar({
 
   const handleConfirmBooking = async () => {
     if (!appointmentId) return
-
+    setIsConfirming(true)
     try {
       const formData = new FormData()
       if (description) {
@@ -141,12 +140,14 @@ export default function AppointmentCalendar({
     } catch (err: any) {
 
       showError(getErrorMessage(err))
-    }
+    }finally {
+    setIsConfirming(false)
+  }
   }
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-gray-50 p-4 lg:p-6 gap-6 font-sans text-slate-800 overflow-hidden">
-      {isLoadingSlots && <CalendarOverlayLoader />}
+     
       {/* Main Calendar Section */}
       <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-full overflow-hidden">
         <CalendarHeader
@@ -176,7 +177,8 @@ export default function AppointmentCalendar({
         onClose={handleCloseDetails}
         onSlotSelect={handleSlotSelect}
         onConfirmBooking={handleConfirmBooking}
-
+        isHolding={isHolding}
+        isConfirming={isConfirming}
       />
 
 

@@ -27,6 +27,7 @@ export default function AppointmentClient({ initialFilters }: { initialFilters: 
     const [successMessage, setSuccessMessage] = useState<{ type: 'approved' | 'rejected', name: string } | null>(null);
     const [activeQuickFilter, setActiveQuickFilter] = useState<'today' | 'tomorrow' | 'week' | null>(null);
     const todayISO = new Date().toISOString().split('T')[0]
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -119,6 +120,7 @@ export default function AppointmentClient({ initialFilters }: { initialFilters: 
 
     const processAction = async (id: string, newStatus: 'approved' | 'rejected') => {
         try {
+            setIsProcessing(true);
             if (newStatus === "approved") {
                 await acceptAppointment(id)
             } else {
@@ -138,6 +140,8 @@ export default function AppointmentClient({ initialFilters }: { initialFilters: 
         } catch (err: any) {
             console.error(err)
             alert("Failed to update appointment. Please try again.")
+        } finally {
+            setIsProcessing(false);
         }
     }
 
@@ -529,22 +533,38 @@ export default function AppointmentClient({ initialFilters }: { initialFilters: 
                         </p>
                         <div className="flex gap-3">
                             <button
+                                disabled={isProcessing}
                                 onClick={() => setConfirmAction(null)}
                                 className="flex-1 py-3.5 font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => processAction(confirmAction.request.id, confirmAction.type === 'approve' ? 'approved' : 'rejected')}
+                                disabled={isProcessing}
+                                onClick={() =>
+                                    processAction(
+                                        confirmAction.request.id,
+                                        confirmAction.type === 'approve' ? 'approved' : 'rejected'
+                                    )
+                                }
                                 className={cn(
-                                    "flex-1 py-3.5 font-semibold text-white rounded-xl shadow-lg transition-all",
+                                    "flex-1 py-3.5 font-semibold text-white rounded-xl shadow-lg transition-all flex items-center justify-center gap-2",
                                     confirmAction.type === 'approve'
                                         ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
-                                        : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                                        : "bg-red-600 hover:bg-red-700 shadow-red-200",
+                                    isProcessing && "opacity-70 cursor-not-allowed"
                                 )}
                             >
-                                Yes, {confirmAction.type}
+                                {isProcessing ? (
+                                    <>
+                                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>Yes, {confirmAction.type}</>
+                                )}
                             </button>
+
                         </div>
                     </div>
                 </div>
