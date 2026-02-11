@@ -1,119 +1,3 @@
-// import React from "react";
-// import { Calendar as CalendarIcon, AlertCircle } from "lucide-react";
-
-// import TimeSlotSection from "./Timeslotsection";
-// import { DoctorDayAvailability } from "./Types";
-// import SidebarBookingForm from "./SidebarBookingForm";
-
-
-// interface SidebarContentProps {
-//   selectedDate: Date | null
-//   dayAvailability: DoctorDayAvailability | null
-//   selectedSlot: string | null
-//   canShowForm: boolean
-//   description: string
-//   files: File[]
-//   onDescriptionChange: (v: string) => void
-//   onFilesChange: (f: File[]) => void
-//   onSlotSelect: (
-//     slotKey: string,
-//     start: string,
-//     end: string
-//   ) => void
-// }
-
-// export default function SidebarContent({
-//   selectedDate,
-//   dayAvailability,
-//   selectedSlot,
-//   onSlotSelect,
-//   canShowForm,
-//   description,
-//   files,
-//   onDescriptionChange,
-//   onFilesChange,
-  
-// }: SidebarContentProps) {
-//   if (!selectedDate) {
-//     return (
-//       <div className="flex-1 p-5 overflow-y-auto bg-white">
-//         <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4">
-//           <CalendarIcon className="w-16 h-16 opacity-20" />
-//           <p>Select a date to view slots.</p>
-//         </div>
-//       </div>
-//     )
-//   }
-//   if (!dayAvailability || !dayAvailability.is_active || dayAvailability.slots.length === 0) {
-//     return (
-//       <div className="flex-1 p-5 overflow-y-auto bg-white">
-//         <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
-//           <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-//           <h3 className="font-bold text-amber-800 mb-1">No Availability</h3>
-//           <p className="text-sm text-amber-600">
-//             The doctor is unavailable on this date.
-//           </p>
-//         </div>
-//       </div>
-//     )
-//   }
-
-//   const availableSlots = dayAvailability.slots.filter(
-//     s => s.state === "available"
-//   )
-
-
-//   if (dayAvailability?.slots.length === 0) {
-//     return (
-//       <div className="flex-1 p-5 overflow-y-auto bg-white">
-//         <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
-//           <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-//           <h3 className="font-bold text-amber-800 mb-1">No Availability</h3>
-//           <p className="text-sm text-amber-600">The doctor is unavailable on this date.</p>
-//         </div>
-//       </div>
-//     );
-//   }
-//   if (selectedSlot && !canShowForm) {
-//     return (
-//       <div className="flex-1 p-5 overflow-y-auto bg-white">
-//         <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
-//           <p className="text-sm text-slate-500 text-center">
-//             Holding slot…
-//           </p>
-//         </div>
-//       </div>
-//     )
-//   }
-//   return (
-//     <div className="flex-1 p-5 overflow-y-auto bg-white">
-//       <div className="space-y-6">
-//         {canShowForm && (
-//           <SidebarBookingForm
-//             description={description}
-//             files={files}
-//             onDescriptionChange={onDescriptionChange}
-//             onFilesChange={onFilesChange}
-//           />
-//         )}
-
-//         <TimeSlotSection
-//           title="Morning"
-//           slots={dayAvailability?.slots.slice(0, 3) || []}
-//           selectedSlot={selectedSlot}
-//           onSlotSelect={onSlotSelect}
-//         />
-
-//         <TimeSlotSection
-//           title="Afternoon"
-//           slots={dayAvailability?.slots.slice(3) || []}
-//           selectedSlot={selectedSlot}
-//           onSlotSelect={onSlotSelect}
-//         />
-//       </div>
-//     </div>
-//   );
-// }
 'use client'
 import React from "react"
 import { Calendar as CalendarIcon, AlertCircle, CheckCircle2, Clock } from "lucide-react"
@@ -127,6 +11,7 @@ interface SidebarContentProps {
   selectedSlot: string | null
   canShowForm: boolean
   description: string
+  isHolding:boolean
   files: File[]
   onDescriptionChange: (v: string) => void
   onFilesChange: (f: File[]) => void
@@ -137,6 +22,7 @@ export default function SidebarContent({
   selectedDate,
   dayAvailability,
   selectedSlot,
+  isHolding,
   onSlotSelect,
   canShowForm,
   description,
@@ -212,6 +98,7 @@ export default function SidebarContent({
         <TimeSlotSection
           title="Morning"
           slots={dayAvailability.slots.slice(0, 3)}
+          isHolding={isHolding }
           selectedSlot={selectedSlot}
           onSlotSelect={onSlotSelect}
         />
@@ -219,6 +106,7 @@ export default function SidebarContent({
         <TimeSlotSection
           title="Afternoon"
           slots={dayAvailability.slots.slice(3)}
+          isHolding={isHolding }
           selectedSlot={selectedSlot}
           onSlotSelect={onSlotSelect}
         />

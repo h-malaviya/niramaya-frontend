@@ -8,7 +8,6 @@ import {
   Clock, 
   User, 
   IndianRupee,
-  Download,
   ArrowRight,
   Loader2,
   Home,
@@ -213,27 +212,10 @@ export default function PaymentSuccess({ appointmentId }: PaymentSuccessProps) {
               View All Appointments
             </button>
 
-            <button
-              onClick={() => window.print()}
-              className="py-3 px-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <Download className="w-5 h-5" />
-              Download Receipt
-            </button>
           </div>
         </div>
 
-        {/* Additional Help */}
-        <div className="text-center">
-          <p className="text-slate-500 text-sm mb-2">Need help?</p>
-          <a 
-            href="/support" 
-            className="text-cyan-600 hover:text-cyan-700 font-semibold inline-flex items-center gap-1"
-          >
-            Contact Support
-            <ArrowRight className="w-4 h-4" />
-          </a>
-        </div>
+      
       </div>
     </div>
   );

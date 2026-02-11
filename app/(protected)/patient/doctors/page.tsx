@@ -50,7 +50,7 @@ export default async function DoctorsPage({
   // Fetch doctors data on server
   const initialData = await fetchDoctorsFromServer(params);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-blue-50/30">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-cyan-50/30 to-blue-50/30">
       {/* Header - Server Component */}
       <Header />
 
@@ -67,9 +67,9 @@ export default async function DoctorsPage({
 function Header() {
   return (
     <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-30 shadow-sm">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-400 mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-linear-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
             <Stethoscope className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -88,7 +88,7 @@ function Header() {
 function Footer() {
   return (
     <footer className="mt-20 bg-white border-t-2 border-slate-200 py-8">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-600 text-sm">
+      <div className="max-w-400 mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-600 text-sm">
         <p>© 2024 Healthcare Platform. All rights reserved.</p>
       </div>
     </footer>

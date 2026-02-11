@@ -1,11 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
+const AUTH_PAGES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+];
+
+// role-based protected paths
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
   "/patient": ["patient"],
   "/doctor": ["doctor"],
 };
-
-const AUTH_PAGES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -14,188 +21,152 @@ export async function proxy(req: NextRequest) {
   const refreshToken = req.cookies.get("refresh_token")?.value;
   const role = req.cookies.get("role")?.value;
 
-  console.log(`[Middleware] Path: ${pathname}, Has refresh: ${!!refreshToken}, Role: ${role}`);
-
-  // ==================== ROOT ROUTE ====================
+  // ================= ROOT `/` =================
   if (pathname === "/") {
     if (!refreshToken) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
-
-    const validated = await validateSession(req);
-    if (!validated) {
+    const valid = await validateSession(req);
+    if (!valid) {
       return clearSessionAndRedirect(req, pathname);
     }
-
-    const home = role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
-    return NextResponse.redirect(new URL(home, req.url));
+    const dash = role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
+    return NextResponse.redirect(new URL(dash, req.url));
   }
 
-  // ==================== AUTH PAGES PROTECTION ====================
-  // CRITICAL: If user is authenticated, they CANNOT access auth pages
-  // This prevents browser back button from showing auth pages
-  const isAuthPage = AUTH_PAGES.some((page) => pathname.startsWith(page));
-  
-  if (isAuthPage) {
-    // If they have a refresh token, validate it
+  // ================= AUTH PAGES =================
+  // check if exact auth page
+  const matchesAuthPage = AUTH_PAGES.some((p) =>
+    pathname === p || pathname.startsWith(`${p}/`)
+  );
+
+  if (matchesAuthPage) {
+    // if user is authenticated, redirect them away
     if (refreshToken && role) {
-      const validated = await validateSession(req);
-      
-      if (validated) {
-        // User is authenticated - FORCE redirect away from auth pages
-        const fallback = role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
-        console.log(`[Middleware] ✋ Blocking authenticated user from ${pathname}, redirecting to ${fallback}`);
-        
-        // Create redirect response with cache control headers
-        const redirectResponse = NextResponse.redirect(new URL(fallback, req.url));
-        
-        // Prevent caching of this redirect to ensure it always runs
-        redirectResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        redirectResponse.headers.set('Pragma', 'no-cache');
-        redirectResponse.headers.set('Expires', '0');
-        
-        return redirectResponse;
-      } else {
-        // Session is invalid - clear cookies and let them access auth page
-        console.log(`[Middleware] Invalid session on auth page, clearing cookies`);
-        return clearSessionCookies(NextResponse.next());
+      const valid = await validateSession(req);
+      if (valid) {
+        const dash =
+          role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
+        return redirectNoCache(req, dash);
       }
     }
-    
-    // No auth data - allow access to auth pages
-    // Add headers to prevent caching of auth pages
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-    return response;
+    // not authenticated — allow
+    return NextResponse.next();
   }
 
-  // ==================== PROTECTED ROUTES ====================
+  // ================= PROTECTED ROUTES =================
   const protectedPath = Object.keys(ROUTE_PERMISSIONS).find((path) =>
     pathname.startsWith(path)
   );
 
+  // public pages not matching protected paths
   if (!protectedPath) {
     return NextResponse.next();
   }
 
-  // No refresh token = not authenticated at all
+  // if user has no refresh token — unauthenticated
   if (!refreshToken) {
-    console.log(`[Middleware] No refresh token, redirecting to login`);
     return clearSessionAndRedirect(req, pathname);
   }
 
-  // No role = invalid session
+  // role must exist
   if (!role) {
-    console.log(`[Middleware] No role, redirecting to login`);
     return clearSessionAndRedirect(req, pathname);
   }
 
-  // Try to refresh access token if missing
+  // try to refresh access token if missing
   if (!accessToken) {
-    console.log(`[Middleware] No access token, trying to refresh`);
     const refreshed = await tryRefreshToken(req);
-
     if (!refreshed) {
-      console.log(`[Middleware] Refresh failed, redirecting to login`);
       return clearSessionAndRedirect(req, pathname);
     }
-    // Token refreshed successfully, continue
     return NextResponse.next();
   }
 
-  // Check role-based permissions
-  const allowedRoles = ROUTE_PERMISSIONS[protectedPath];
-
-  if (!allowedRoles.includes(role)) {
-    // User has wrong role for this route
-    const fallback = role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
-    console.log(`[Middleware] Wrong role for ${pathname}, redirecting to ${fallback}`);
-    return NextResponse.redirect(new URL(fallback, req.url));
+  // check allowed roles
+  const allowed = ROUTE_PERMISSIONS[protectedPath] ?? [];
+  if (!allowed.includes(role)) {
+    const fallback =
+      role === "doctor" ? "/doctor/appointments" : "/patient/doctors";
+    return redirectNoCache(req, fallback);
   }
 
-  // All checks passed
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // all auth pages except static assets + api
+    "/login/:path*",
+    "/signup/:path*",
+    "/forgot-password/:path*",
+    "/reset-password/:path*",
+
+    // protected routes
+    "/doctor/:path*",
+    "/patient/:path*",
+    "/",
   ],
 };
 
-// ==================== HELPER FUNCTIONS ====================
 
-async function tryRefreshToken(req: NextRequest): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/refresh-token`,
-      {
-        method: "POST",
-        headers: {
-          cookie: req.headers.get("cookie") ?? "",
-        },
-        credentials: "include",
-      }
-    );
+// ================= HELPERS =================
 
-    return res.ok;
-  } catch {
-    return false;
-  }
+function redirectNoCache(req: NextRequest, url: string) {
+  const res = NextResponse.redirect(new URL(url, req.url));
+  res.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+  res.headers.set("Pragma", "no-cache");
+  res.headers.set("Expires", "0");
+  return res;
 }
 
-async function validateSession(req: NextRequest): Promise<boolean> {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/validate`, {
-      method: "GET",
-      headers: {
-        cookie: req.headers.get("cookie") ?? "",
-      },
-      credentials: "include",
-    });
-
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function redirectToLogin(req: NextRequest, pathname: string) {
-  const loginUrl = new URL("/login", req.url);
-  // Only add 'from' parameter for non-auth pages
-  if (!AUTH_PAGES.some(page => pathname.startsWith(page))) {
-    loginUrl.searchParams.set("from", pathname);
-  }
-  return NextResponse.redirect(loginUrl);
-}
-
-function clearSessionCookies(response: NextResponse): NextResponse {
-  const cookieOptions = {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-  };
-
-  response.cookies.set("access_token", "", cookieOptions);
-  response.cookies.set("refresh_token", "", cookieOptions);
-  response.cookies.set("role", "", cookieOptions);
-
+function clearSessionCookies(response: NextResponse) {
+  response.cookies.set("access_token", "", { path: "/", maxAge: 0 });
+  response.cookies.set("refresh_token", "", { path: "/", maxAge: 0 });
+  response.cookies.set("role", "", { path: "/", maxAge: 0 });
   return response;
 }
 
 function clearSessionAndRedirect(req: NextRequest, pathname: string) {
-  const res = redirectToLogin(req, pathname);
+  const loginUrl = new URL("/login", req.url);
+  if (!AUTH_PAGES.some((p) => pathname.startsWith(p))) {
+    loginUrl.searchParams.set("from", pathname);
+  }
+  const res = NextResponse.redirect(loginUrl);
   return clearSessionCookies(res);
+}
+
+async function tryRefreshToken(req: NextRequest) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/refresh-token`,
+      {
+        method: "POST",
+        headers: { cookie: req.headers.get("cookie") ?? "" },
+        credentials: "include",
+      }
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function validateSession(req: NextRequest) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}validate`,
+      {
+        method: "GET",
+        headers: { cookie: req.headers.get("cookie") ?? "" },
+        credentials: "include",
+      }
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
