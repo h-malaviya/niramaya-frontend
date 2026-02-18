@@ -23,6 +23,7 @@ export const LogoutButton = () => {
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('role')
+      localStorage.removeItem("chat_thread_id");
       window.location.href = '/login'
     } catch (err) {
       console.error('Session already expired')
