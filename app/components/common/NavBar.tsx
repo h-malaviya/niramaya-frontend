@@ -57,6 +57,7 @@ const NavBar = ({ currentUser }: NavBarProps) => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('role')
+    localStorage.removeItem("chat_thread_id");
     clearAuthCookies()
     setIsLoading(false)
     window.location.href = '/login';

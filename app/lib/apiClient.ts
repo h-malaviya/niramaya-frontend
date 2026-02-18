@@ -96,6 +96,7 @@ function clearAuthAndRedirect() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("role");
+  localStorage.removeItem("chat_thread_id");
 
   // Clear cookies (client-side)
   clearClientCookies();

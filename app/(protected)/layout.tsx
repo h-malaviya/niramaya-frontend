@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import NavBar from '../components/common/NavBar'
+import AIChatbot from '../components/common/AIChatbot'
 
 
 export default async function ProtectedLayout({
@@ -9,7 +10,7 @@ export default async function ProtectedLayout({
     children: React.ReactNode
 }) {
     const token = (await cookies()).get('refresh_token')?.value
-
+    const role = (await cookies()).get('role')?.value
     if (!token) redirect('/login')
 
     return (
@@ -18,6 +19,7 @@ export default async function ProtectedLayout({
             <main className="flex-1">
                 {children}
             </main>
+            {role=='patient'&&<AIChatbot/>}
         </div>
     )
 }
